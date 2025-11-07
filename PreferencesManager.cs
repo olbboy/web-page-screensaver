@@ -8,7 +8,7 @@
     using System.Windows.Forms;
     using Microsoft.Win32;
 
-    public class PreferencesManager 
+    public class PreferencesManager
     {
         private const string MULTISCREEN_PREF = "MultiScreenMode";
         private const string URL_PREF = "Url";
@@ -25,14 +25,27 @@
         private const string RANDOMIZE_PREF_DEFAULT = "False";
         private const string CLOSE_ON_ACTIVITY_PREF_DEFAULT = "True";
 
-        private static RegistryKey reg = Registry.CurrentUser.CreateSubKey(Program.KEY);
+        private static RegistryKey? reg;
+
+        static PreferencesManager()
+        {
+            try
+            {
+                reg = Registry.CurrentUser.CreateSubKey(Program.KEY);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Registry initialization error: {ex.Message}");
+                reg = null;
+            }
+        }
 
         public PreferencesManager()
         {
             LoadPreferences();
         }
 
-        private List<BasicScreenInfo> effectiveScreensListField;
+        private List<BasicScreenInfo>? effectiveScreensListField;
         public List<BasicScreenInfo> EffectiveScreensList
         {
             get
@@ -124,7 +137,7 @@
         // options: 1) retro-fit more ordering stuff onto screen URLS, 2) make the URLS list just one list again, and 
         // add another list that specifies which screen each URL is for. (i.e. rewrite URL list handling completely).
         // 2. is actually the better option.
-        private List<List<string>> urlsByScreen;
+        private List<List<string>> urlsByScreen = new List<List<string>>();
         public List<string> GetUrlsByScreen(int screenNum)
         {
             int startAtScreenNum = MultiScreenMode == MultiScreenModeItem.Mirror ? 0 : screenNum;
@@ -206,7 +219,7 @@
             }
         }
 
-        private List<int> rotationIntervalsByScreen;
+        private List<int> rotationIntervalsByScreen = new List<int>();
         public int GetRotationIntervalByScreen(int screenNum)
         {
             return rotationIntervalsByScreen[TranslateScreenNumToScreenPrefNum(screenNum)];
@@ -216,7 +229,7 @@
             rotationIntervalsByScreen[TranslateScreenNumToScreenPrefNum(screenNum)] = value;
         }
 
-        private List<bool> randomizeFlagByScreen;
+        private List<bool> randomizeFlagByScreen = new List<bool>();
         public bool GetRandomizeFlagByScreen(int screenNum)
         {
             return randomizeFlagByScreen[TranslateScreenNumToScreenPrefNum(screenNum)];
@@ -236,21 +249,67 @@
 
         public void SavePreferences()
         {
-            reg.SetValue(MULTISCREEN_PREF, MultiScreenMode);
-            reg.SetValue(CLOSE_ON_ACTIVITY_PREF, CloseOnActivity);
-            SaveUrlsAllScreens();
-            SavePrefAllScreens(INTERVAL_PREF, rotationIntervalsByScreen);
-            SavePrefAllScreens(RANDOMIZE_PREF, randomizeFlagByScreen);
-            reg.Close();
+            if (reg == null)
+            {
+                System.Diagnostics.Debug.WriteLine("Cannot save preferences: Registry key is null");
+                return;
+            }
+
+            try
+            {
+                reg.SetValue(MULTISCREEN_PREF, MultiScreenMode.ToString());
+                reg.SetValue(CLOSE_ON_ACTIVITY_PREF, CloseOnActivity.ToString());
+                SaveUrlsAllScreens();
+                SavePrefAllScreens(INTERVAL_PREF, rotationIntervalsByScreen);
+                SavePrefAllScreens(RANDOMIZE_PREF, randomizeFlagByScreen);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving preferences: {ex.Message}");
+                MessageBox.Show(
+                    $"Failed to save preferences:\n{ex.Message}",
+                    "Save Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
         }
 
-        private void LoadPreferences()  
+        private void LoadPreferences()
         {
-            MultiScreenMode = (MultiScreenModeItem)Enum.Parse(typeof(MultiScreenModeItem), (string)reg.GetValue(MULTISCREEN_PREF, MULTISCREEN_PREF_DEFAULT));
-            CloseOnActivity = bool.Parse((string)reg.GetValue(CLOSE_ON_ACTIVITY_PREF, CLOSE_ON_ACTIVITY_PREF_DEFAULT));
-            urlsByScreen = LoadUrlsAllScreens();
-            rotationIntervalsByScreen = LoadPrefAllScreens<int>(INTERVAL_PREF, INTERVAL_PREF_DEFAULT, INTERVAL_PREF_DEFAULT);
-            randomizeFlagByScreen = LoadPrefAllScreens<bool>(RANDOMIZE_PREF, RANDOMIZE_PREF_DEFAULT, RANDOMIZE_PREF_DEFAULT);
+            try
+            {
+                if (reg == null)
+                {
+                    // Use defaults if registry is not available
+                    MultiScreenMode = MultiScreenModeItem.Separate;
+                    CloseOnActivity = true;
+                    urlsByScreen = new List<List<string>>();
+                    rotationIntervalsByScreen = new List<int>();
+                    randomizeFlagByScreen = new List<bool>();
+                    System.Diagnostics.Debug.WriteLine("Using default preferences (registry unavailable)");
+                    return;
+                }
+
+                var multiScreenValue = reg.GetValue(MULTISCREEN_PREF, MULTISCREEN_PREF_DEFAULT) as string ?? MULTISCREEN_PREF_DEFAULT;
+                MultiScreenMode = (MultiScreenModeItem)Enum.Parse(typeof(MultiScreenModeItem), multiScreenValue);
+
+                var closeOnActivityValue = reg.GetValue(CLOSE_ON_ACTIVITY_PREF, CLOSE_ON_ACTIVITY_PREF_DEFAULT) as string ?? CLOSE_ON_ACTIVITY_PREF_DEFAULT;
+                CloseOnActivity = bool.Parse(closeOnActivityValue);
+
+                urlsByScreen = LoadUrlsAllScreens();
+                rotationIntervalsByScreen = LoadPrefAllScreens<int>(INTERVAL_PREF, INTERVAL_PREF_DEFAULT, INTERVAL_PREF_DEFAULT);
+                randomizeFlagByScreen = LoadPrefAllScreens<bool>(RANDOMIZE_PREF, RANDOMIZE_PREF_DEFAULT, RANDOMIZE_PREF_DEFAULT);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading preferences: {ex.Message}");
+                // Fall back to defaults
+                MultiScreenMode = MultiScreenModeItem.Separate;
+                CloseOnActivity = true;
+                urlsByScreen = new List<List<string>>();
+                rotationIntervalsByScreen = new List<int>();
+                randomizeFlagByScreen = new List<bool>();
+            }
         }
 
         private List<List<string>> LoadUrlsAllScreens()
@@ -298,16 +357,30 @@
 
         private void SavePrefAllScreens<T>(string preferenceName, List<T> prefsList)
         {
+            if (reg == null) return;
+
             for (int i = 0; i < prefsList.Count(); i++)
             {
-                reg.SetValue(ScreenSpecificPrefName(preferenceName, i), prefsList[i]);
+                var value = prefsList[i];
+                if (value != null)
+                {
+                    reg.SetValue(ScreenSpecificPrefName(preferenceName, i), value);
+                }
             }
         }
 
         private T LoadPrefByScreen<T>(int screenNum, string prefBaseName, string primaryScreenPrefDefaultValue, string nonPrimaryScreenPrefDefaultValue)
         {
+            if (reg == null)
+            {
+                // Return default value if registry is unavailable
+                bool isPrimaryScreen = screenNum < Screen.AllScreens.Length && Screen.AllScreens[screenNum].Primary;
+                string defaultValue = isPrimaryScreen ? primaryScreenPrefDefaultValue : nonPrimaryScreenPrefDefaultValue;
+                return (T)Convert.ChangeType(defaultValue, typeof(T));
+            }
+
             string screenSpecificPrefEntryName = ScreenSpecificPrefName(prefBaseName, screenNum);
-            object regValue = reg.GetValue(screenSpecificPrefEntryName);
+            object? regValue = reg.GetValue(screenSpecificPrefEntryName);
             if (regValue == null)
             {
                 // no screen-specific entry exists.

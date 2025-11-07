@@ -28,20 +28,23 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.webBrowser = new System.Windows.Forms.WebBrowser();
+            this.webView2 = new Microsoft.Web.WebView2.WinForms.WebView2();
             this.closeButton = new System.Windows.Forms.Button();
+            ((System.ComponentModel.ISupportInitialize)(this.webView2)).BeginInit();
             this.SuspendLayout();
-            // 
-            // webBrowser
-            // 
-            this.webBrowser.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.webBrowser.Location = new System.Drawing.Point(0, 0);
-            this.webBrowser.Margin = new System.Windows.Forms.Padding(4);
-            this.webBrowser.MinimumSize = new System.Drawing.Size(27, 25);
-            this.webBrowser.Name = "webBrowser";
-            this.webBrowser.ScriptErrorsSuppressed = true;
-            this.webBrowser.Size = new System.Drawing.Size(379, 322);
-            this.webBrowser.TabIndex = 0;
+            //
+            // webView2
+            //
+            this.webView2.AllowExternalDrop = false;
+            this.webView2.CreationProperties = null;
+            this.webView2.DefaultBackgroundColor = System.Drawing.Color.Black;
+            this.webView2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.webView2.Location = new System.Drawing.Point(0, 0);
+            this.webView2.Margin = new System.Windows.Forms.Padding(4);
+            this.webView2.Name = "webView2";
+            this.webView2.Size = new System.Drawing.Size(379, 322);
+            this.webView2.TabIndex = 0;
+            this.webView2.ZoomFactor = 1D;
             // 
             // closeButton
             // 
@@ -64,7 +67,7 @@
             this.BackColor = System.Drawing.Color.Black;
             this.ClientSize = new System.Drawing.Size(379, 322);
             this.Controls.Add(this.closeButton);
-            this.Controls.Add(this.webBrowser);
+            this.Controls.Add(this.webView2);
             this.ForeColor = System.Drawing.Color.White;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Margin = new System.Windows.Forms.Padding(4);
@@ -74,13 +77,14 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Text = "Form1";
             this.Load += new System.EventHandler(this.ScreensaverForm_Load);
+            ((System.ComponentModel.ISupportInitialize)(this.webView2)).EndInit();
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private System.Windows.Forms.WebBrowser webBrowser;
+        private Microsoft.Web.WebView2.WinForms.WebView2 webView2;
         private System.Windows.Forms.Button closeButton;
     }
 }
