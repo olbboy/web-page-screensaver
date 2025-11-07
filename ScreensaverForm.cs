@@ -14,18 +14,19 @@ namespace pl.polidea.lab.Web_Page_Screensaver
     public partial class ScreensaverForm : Form
     {
         private DateTime StartTime;
-        private Timer timer;
+        private Timer? timer;
         private int currentSiteIndex = -1;
         private GlobalUserEventHandler userEventHandler;
         private bool shuffleOrder;
-        private List<string> urls;
+        private List<string>? urls;
 
         private PreferencesManager prefsManager = new PreferencesManager();
 
         private int screenNum;
+        private bool isWebView2Initialized = false;
 
         [ThreadStatic]
-        private static Random random;
+        private static Random? random;
 
         public ScreensaverForm(int? screenNumber = null)
         {
@@ -53,9 +54,28 @@ namespace pl.polidea.lab.Web_Page_Screensaver
             }
         }
 
-        private void ScreensaverForm_Load(object sender, EventArgs e)
+        private async void ScreensaverForm_Load(object sender, EventArgs e)
         {
-            if (Urls.Any())
+            // Initialize WebView2 asynchronously
+            try
+            {
+                await InitializeWebView2Async();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"WebView2 initialization failed: {ex.Message}");
+                MessageBox.Show(
+                    $"Failed to initialize web rendering engine:\n{ex.Message}\n\n" +
+                    "Please ensure Microsoft Edge WebView2 Runtime is installed.\n" +
+                    "Download from: https://go.microsoft.com/fwlink/p/?LinkId=2124703",
+                    "Initialization Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                Close();
+                return;
+            }
+
+            if (Urls != null && Urls.Any())
             {
                 if (Urls.Count > 1)
                 {
@@ -65,7 +85,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver
                     {
                         random = new Random();
 
-                        int n = urls.Count;
+                        int n = urls!.Count;
                         while (n > 1)
                         {
                             n--;
@@ -90,7 +110,39 @@ namespace pl.polidea.lab.Web_Page_Screensaver
             }
             else
             {
-                webBrowser.Visible = false;
+                webView2.Visible = false;
+            }
+        }
+
+        private async Task InitializeWebView2Async()
+        {
+            try
+            {
+                // Initialize WebView2 core
+                await webView2.EnsureCoreWebView2Async(null);
+                isWebView2Initialized = true;
+
+                // Configure WebView2 settings for screensaver use
+                if (webView2.CoreWebView2 != null)
+                {
+                    // Disable dev tools and context menus
+                    webView2.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                    webView2.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+                    webView2.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                    webView2.CoreWebView2.Settings.IsZoomControlEnabled = false;
+
+                    // Enable modern web features
+                    webView2.CoreWebView2.Settings.IsScriptEnabled = true;
+                    webView2.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
+
+                    // Suppress script errors (similar to old WebBrowser.ScriptErrorsSuppressed)
+                    webView2.CoreWebView2.Settings.IsWebMessageEnabled = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"WebView2 initialization error: {ex.Message}");
+                throw;
             }
         }
 
@@ -101,26 +153,36 @@ namespace pl.polidea.lab.Web_Page_Screensaver
 
             if (string.IsNullOrWhiteSpace(url))
             {
-                webBrowser.Visible = false;
+                webView2.Visible = false;
             }
             else
             {
-                webBrowser.Visible = true;
-                try
+                webView2.Visible = true;
+
+                if (isWebView2Initialized && webView2.CoreWebView2 != null)
                 {
-                    Debug.WriteLine($"Navigating: {url}");
-                    webBrowser.Navigate(url);
-                }
-                catch
-                {
-                    // This can happen if IE pops up a window that isn't closed before the next call to Navigate()
+                    try
+                    {
+                        Debug.WriteLine($"Navigating: {url}");
+                        // WebView2 navigation is fire-and-forget in this context
+                        webView2.CoreWebView2.Navigate(url);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Navigation error: {ex.Message}");
+                        // Silently handle navigation errors (same behavior as old WebBrowser)
+                    }
                 }
             }
+
             Application.AddMessageFilter(userEventHandler);
         }
 
         private void RotateSite()
         {
+            if (Urls == null || Urls.Count == 0)
+                return;
+
             currentSiteIndex++;
 
             if (currentSiteIndex >= Urls.Count)
