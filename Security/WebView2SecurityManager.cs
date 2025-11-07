@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
@@ -52,7 +53,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
             // SmartScreen provides additional protection against phishing and malware
             // Enabled by default in WebView2, provides defense-in-depth
 
-            System.Diagnostics.Debug.WriteLine("[SECURITY] WebView2 security hardening applied successfully");
+            Debug.WriteLine("[SECURITY] WebView2 security hardening applied successfully");
         }
 
         /// <summary>
@@ -71,7 +72,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
             // 2. WebView2 security settings
             // 3. Windows security features (DEP, ASLR, etc.)
 
-            System.Diagnostics.Debug.WriteLine("[SECURITY] Content Security Policy configured");
+            Debug.WriteLine("[SECURITY] Content Security Policy configured");
         }
 
         /// <summary>
@@ -92,11 +93,11 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
                 {
                     // Block navigation to invalid URL
                     args.Cancel = true;
-                    System.Diagnostics.Debug.WriteLine($"[SECURITY] Navigation blocked: {errorMessage}");
+                    Debug.WriteLine($"[SECURITY] Navigation blocked: {errorMessage}");
 
                     // Log security event
                     var auditLog = UrlValidator.GenerateAuditLogEntry(args.Uri, false, errorMessage);
-                    System.Diagnostics.Debug.WriteLine($"[AUDIT] {auditLog}");
+                    Debug.WriteLine($"[AUDIT] {auditLog}");
                 }
             };
 
@@ -107,11 +108,11 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
                 if (!UrlValidator.IsValidUrl(args.Uri, out string errorMessage))
                 {
                     args.Cancel = true;
-                    System.Diagnostics.Debug.WriteLine($"[SECURITY] Frame navigation blocked: {errorMessage}");
+                    Debug.WriteLine($"[SECURITY] Frame navigation blocked: {errorMessage}");
                 }
             };
 
-            System.Diagnostics.Debug.WriteLine("[SECURITY] Navigation filtering configured");
+            Debug.WriteLine("[SECURITY] Navigation filtering configured");
         }
 
         /// <summary>
@@ -133,7 +134,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
 
                 if (!success)
                 {
-                    System.Diagnostics.Debug.WriteLine(
+                    Debug.WriteLine(
                         $"[SECURITY] Navigation failed - Status: {httpStatusCode}, Error: {webErrorStatus}");
                 }
             };
@@ -143,7 +144,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
             {
                 // Automatically block all script dialogs
                 args.Accept();
-                System.Diagnostics.Debug.WriteLine(
+                Debug.WriteLine(
                     $"[SECURITY] Script dialog blocked - Type: {args.Kind}, Message: {args.Message}");
             };
 
@@ -152,11 +153,11 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
             {
                 // Deny all permission requests by default (screensaver shouldn't need these)
                 args.State = CoreWebView2PermissionState.Deny;
-                System.Diagnostics.Debug.WriteLine(
+                Debug.WriteLine(
                     $"[SECURITY] Permission denied - Type: {args.PermissionKind}, URI: {args.Uri}");
             };
 
-            System.Diagnostics.Debug.WriteLine("[SECURITY] Security logging configured");
+            Debug.WriteLine("[SECURITY] Security logging configured");
         }
 
         /// <summary>
@@ -181,7 +182,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
             // For maximum privacy, consider using InPrivate mode or custom user data folder
             // that is cleared on screensaver exit
 
-            System.Diagnostics.Debug.WriteLine("[SECURITY] Privacy protections applied (GDPR compliance)");
+            Debug.WriteLine("[SECURITY] Privacy protections applied (GDPR compliance)");
         }
 
         /// <summary>
@@ -200,11 +201,11 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
                 var profile = coreWebView.Profile;
                 await profile.ClearBrowsingDataAsync();
 
-                System.Diagnostics.Debug.WriteLine("[SECURITY] Browsing data cleared successfully");
+                Debug.WriteLine("[SECURITY] Browsing data cleared successfully");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[SECURITY] Error clearing browsing data: {ex.Message}");
+                Debug.WriteLine($"[SECURITY] Error clearing browsing data: {ex.Message}");
             }
         }
 
@@ -221,11 +222,11 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
 
                 if (string.IsNullOrEmpty(runtimeVersion))
                 {
-                    System.Diagnostics.Debug.WriteLine("[SECURITY] WebView2 runtime version could not be determined");
+                    Debug.WriteLine("[SECURITY] WebView2 runtime version could not be determined");
                     return false;
                 }
 
-                System.Diagnostics.Debug.WriteLine($"[SECURITY] WebView2 runtime version: {runtimeVersion}");
+                Debug.WriteLine($"[SECURITY] WebView2 runtime version: {runtimeVersion}");
 
                 // In production, you would check against a list of known vulnerable versions
                 // For now, just log the version for audit purposes
@@ -233,7 +234,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[SECURITY] Error checking runtime version: {ex.Message}");
+                Debug.WriteLine($"[SECURITY] Error checking runtime version: {ex.Message}");
                 return false;
             }
         }
@@ -248,7 +249,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
         {
             if (webView?.CoreWebView2 == null)
             {
-                System.Diagnostics.Debug.WriteLine("[SECURITY] Cannot initialize security - WebView2 not ready");
+                Debug.WriteLine("[SECURITY] Cannot initialize security - WebView2 not ready");
                 return false;
             }
 
@@ -257,7 +258,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
                 // Validate runtime version first
                 if (!ValidateRuntimeVersion())
                 {
-                    System.Diagnostics.Debug.WriteLine("[SECURITY] Warning: Runtime version validation failed");
+                    Debug.WriteLine("[SECURITY] Warning: Runtime version validation failed");
                 }
 
                 // Apply all security hardening measures
@@ -267,17 +268,17 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
                 ConfigureSecurityLogging(webView);
                 ApplyPrivacyProtections(webView.CoreWebView2);
 
-                System.Diagnostics.Debug.WriteLine("[SECURITY] ===== WebView2 Security Initialization Complete =====");
-                System.Diagnostics.Debug.WriteLine("[SECURITY] - OWASP Top 10 mitigations applied");
-                System.Diagnostics.Debug.WriteLine("[SECURITY] - NIST SP 800-53 controls implemented");
-                System.Diagnostics.Debug.WriteLine("[SECURITY] - GDPR privacy protections enabled");
-                System.Diagnostics.Debug.WriteLine("[SECURITY] - Defense-in-depth security layers active");
+                Debug.WriteLine("[SECURITY] ===== WebView2 Security Initialization Complete =====");
+                Debug.WriteLine("[SECURITY] - OWASP Top 10 mitigations applied");
+                Debug.WriteLine("[SECURITY] - NIST SP 800-53 controls implemented");
+                Debug.WriteLine("[SECURITY] - GDPR privacy protections enabled");
+                Debug.WriteLine("[SECURITY] - Defense-in-depth security layers active");
 
                 return true;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[SECURITY] Error during security initialization: {ex.Message}");
+                Debug.WriteLine($"[SECURITY] Error during security initialization: {ex.Message}");
                 return false;
             }
         }
