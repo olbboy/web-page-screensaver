@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -68,7 +70,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
                 if (url.Contains(pattern, StringComparison.OrdinalIgnoreCase))
                 {
                     errorMessage = $"URL contains potentially dangerous content: {pattern}";
-                    System.Diagnostics.Debug.WriteLine($"[SECURITY] Blocked URL with pattern '{pattern}': {url}");
+                    Debug.WriteLine($"[SECURITY] Blocked URL with pattern '{pattern}': {url}");
                     return false;
                 }
             }
@@ -84,18 +86,18 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
             if (!AllowedSchemes.Contains(uri.Scheme))
             {
                 errorMessage = $"URL scheme '{uri.Scheme}' is not allowed. Allowed schemes: {string.Join(", ", AllowedSchemes)}";
-                System.Diagnostics.Debug.WriteLine($"[SECURITY] Blocked URL with disallowed scheme '{uri.Scheme}': {url}");
+                Debug.WriteLine($"[SECURITY] Blocked URL with disallowed scheme '{uri.Scheme}': {url}");
                 return false;
             }
 
             // Step 6: Check for dangerous file extensions (for file:// URLs)
             if (uri.Scheme.Equals("file", StringComparison.OrdinalIgnoreCase))
             {
-                string extension = System.IO.Path.GetExtension(uri.LocalPath);
+                string extension = Path.GetExtension(uri.LocalPath);
                 if (DangerousExtensions.Contains(extension))
                 {
                     errorMessage = $"File extension '{extension}' is not allowed for security reasons";
-                    System.Diagnostics.Debug.WriteLine($"[SECURITY] Blocked file URL with dangerous extension '{extension}': {url}");
+                    Debug.WriteLine($"[SECURITY] Blocked file URL with dangerous extension '{extension}': {url}");
                     return false;
                 }
             }
@@ -108,7 +110,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
                 if (path.Contains("..") || path.Contains("%"))
                 {
                     errorMessage = "File path contains potentially dangerous characters";
-                    System.Diagnostics.Debug.WriteLine($"[SECURITY] Blocked file URL with suspicious path: {url}");
+                    Debug.WriteLine($"[SECURITY] Blocked file URL with suspicious path: {url}");
                     return false;
                 }
             }
@@ -148,7 +150,7 @@ namespace pl.polidea.lab.Web_Page_Screensaver.Security
                 else
                 {
                     removedUrls.Add((url, errorMessage));
-                    System.Diagnostics.Debug.WriteLine($"[SECURITY] Removed invalid URL: {url} - Reason: {errorMessage}");
+                    Debug.WriteLine($"[SECURITY] Removed invalid URL: {url} - Reason: {errorMessage}");
                 }
             }
 
