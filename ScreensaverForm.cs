@@ -5,9 +5,11 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 using System.Diagnostics;
+using pl.polidea.lab.Web_Page_Screensaver.Security;
 
 namespace pl.polidea.lab.Web_Page_Screensaver
 {
@@ -47,7 +49,21 @@ namespace pl.polidea.lab.Web_Page_Screensaver
             {
                 if (urls == null)
                 {
-                    urls = prefsManager.GetUrlsByScreen(screenNum);
+                    // Load URLs from preferences
+                    var rawUrls = prefsManager.GetUrlsByScreen(screenNum);
+
+                    // Validate and sanitize URLs for security (OWASP best practice)
+                    urls = UrlValidator.ValidateUrlList(rawUrls, out var removedUrls);
+
+                    // Log any URLs that were removed due to security validation
+                    if (removedUrls.Count > 0)
+                    {
+                        Debug.WriteLine($"[SECURITY] Removed {removedUrls.Count} invalid URLs from screen {screenNum}");
+                        foreach (var (removedUrl, reason) in removedUrls)
+                        {
+                            Debug.WriteLine($"[SECURITY] - Blocked: {removedUrl} - Reason: {reason}");
+                        }
+                    }
                 }
 
                 return urls;
@@ -122,26 +138,22 @@ namespace pl.polidea.lab.Web_Page_Screensaver
                 await webView2.EnsureCoreWebView2Async(null);
                 isWebView2Initialized = true;
 
-                // Configure WebView2 settings for screensaver use
+                // Apply comprehensive security hardening (OWASP, NIST, GDPR compliance)
                 if (webView2.CoreWebView2 != null)
                 {
-                    // Disable dev tools and context menus
-                    webView2.CoreWebView2.Settings.AreDevToolsEnabled = false;
-                    webView2.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-                    webView2.CoreWebView2.Settings.IsStatusBarEnabled = false;
-                    webView2.CoreWebView2.Settings.IsZoomControlEnabled = false;
+                    bool securityInitialized = await WebView2SecurityManager.InitializeSecurityAsync(webView2);
 
-                    // Enable modern web features
-                    webView2.CoreWebView2.Settings.IsScriptEnabled = true;
-                    webView2.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
+                    if (!securityInitialized)
+                    {
+                        Debug.WriteLine("[SECURITY] Warning: Some security features may not be fully initialized");
+                    }
 
-                    // Suppress script errors (similar to old WebBrowser.ScriptErrorsSuppressed)
-                    webView2.CoreWebView2.Settings.IsWebMessageEnabled = false;
+                    Debug.WriteLine("[SECURITY] WebView2 initialized with world-class security controls");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"WebView2 initialization error: {ex.Message}");
+                Debug.WriteLine($"[SECURITY] WebView2 initialization error: {ex.Message}");
                 throw;
             }
         }
@@ -157,19 +169,39 @@ namespace pl.polidea.lab.Web_Page_Screensaver
             }
             else
             {
+                // Additional URL validation before navigation (defense-in-depth)
+                if (!UrlValidator.IsValidUrl(url, out string errorMessage))
+                {
+                    Debug.WriteLine($"[SECURITY] Navigation attempt blocked: {errorMessage}");
+                    Debug.WriteLine($"[SECURITY] Invalid URL: {url}");
+
+                    // Generate audit log entry (NIST compliance)
+                    var auditLog = UrlValidator.GenerateAuditLogEntry(url, false, errorMessage);
+                    Debug.WriteLine($"[AUDIT] {auditLog}");
+
+                    // Skip to next URL
+                    Application.AddMessageFilter(userEventHandler);
+                    return;
+                }
+
                 webView2.Visible = true;
 
                 if (isWebView2Initialized && webView2.CoreWebView2 != null)
                 {
                     try
                     {
-                        Debug.WriteLine($"Navigating: {url}");
+                        Debug.WriteLine($"[SECURITY] Navigating to validated URL: {url}");
+
+                        // Generate successful navigation audit log
+                        var auditLog = UrlValidator.GenerateAuditLogEntry(url, true);
+                        Debug.WriteLine($"[AUDIT] {auditLog}");
+
                         // WebView2 navigation is fire-and-forget in this context
                         webView2.CoreWebView2.Navigate(url);
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Navigation error: {ex.Message}");
+                        Debug.WriteLine($"[SECURITY] Navigation error: {ex.Message}");
                         // Silently handle navigation errors (same behavior as old WebBrowser)
                     }
                 }

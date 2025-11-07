@@ -61,6 +61,12 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- Security Documentation -->
+  <ItemGroup>
+    <None Include="SECURITY.md" />
+    <None Include="PRIVACY.md" />
+  </ItemGroup>
+
   <!-- Additional Build Configurations -->
   <PropertyGroup Condition="'$(Configuration)' == 'Settings'">
     <OutputPath>bin\Settings\</OutputPath>
