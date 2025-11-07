@@ -654,6 +654,180 @@ Install Windows Desktop workload:
 dotnet workload install windows-desktop
 ```
 
+### Issue 9: Version Conflicts / Old Files
+
+**Symptom:** Settings or Preview buttons don't work, application crashes silently, or Event Viewer shows .NET Framework 4.x errors
+
+**This is a CRITICAL issue affecting users upgrading from v1.x to v2.0!**
+
+#### A. Old Screensaver File Still Installed
+
+**Symptoms:**
+- Event Viewer shows "Framework Version: v4.0.30319" (old .NET Framework)
+- Application version shows 1.2.0.0 instead of 2.0.0.0
+- Settings button doesn't open dialog
+- Preview shows nothing
+- No error messages displayed
+
+**Event Viewer Evidence:**
+```
+Application: Web-Page-Screensaver.scr or Web-Page-Screensaver-2.scr
+Framework Version: v4.0.30319 (.NET Framework 4.x)
+Exception code: 0xe0434352 (CLR exception)
+Faulting module: KERNELBASE.dll
+```
+
+**Root Cause:**
+- Old v1.x .scr file (requiring .NET Framework 4.0) still in System32
+- Windows runs old file instead of new v2.0 file (.NET 8)
+- Old version crashes because .NET Framework 4.0 may not be installed
+
+**Solution - Remove All Old Files:**
+
+```powershell
+# Open PowerShell as Administrator
+# Navigate to System32
+cd C:\Windows\System32
+
+# List all Web-Page-Screensaver files
+dir Web-Page-Screensaver*.scr
+
+# You might see:
+# - Web-Page-Screensaver.scr (old v1.x)
+# - Web-Page-Screensaver-2.scr (old v1.x)
+# - Other variants
+
+# Delete ALL old versions (IMPORTANT!)
+del Web-Page-Screensaver.scr
+del Web-Page-Screensaver-2.scr
+# Delete any other variants you found
+
+# Verify they're gone
+dir Web-Page-Screensaver*.scr
+
+# Should show: File Not Found
+```
+
+**After Removing Old Files:**
+
+1. **Reinstall v2.0:**
+   ```
+   - Right-click the NEW Web-Page-Screensaver.scr (v2.0)
+   - Select "Install"
+   - Verify version in error dialog if it appears (should say 2.0.0.0)
+   ```
+
+2. **Verify Installation:**
+   ```
+   - Open Control Panel → Screen Saver
+   - Click "Settings..." button
+   - Should now open configuration dialog successfully
+   - New error dialogs (v2.0) show detailed diagnostic information
+   ```
+
+3. **Check Version in Event Viewer (if issues persist):**
+   ```
+   Event Viewer → Windows Logs → Application
+   - Look for "Web-Page-Screensaver" events
+   - Framework should show: .NET 8.0.x (not v4.0.30319)
+   - Version should show: 2.0.0.0 (not 1.2.0.0)
+   ```
+
+#### B. .NET Framework 4.0 Dependency (Old Version)
+
+**If you MUST run old v1.x** (not recommended):
+
+```
+Old v1.2.0.0 requires .NET Framework 4.0 (obsolete):
+- Download: https://www.microsoft.com/download/details.aspx?id=17718
+- NOT recommended - migrate to v2.0 instead
+- v1.x has security vulnerabilities (uses IE engine)
+- v1.x unsupported and deprecated
+```
+
+#### C. Identifying Which Version is Running
+
+**Method 1: Error Dialog (v2.0 feature)**
+
+If Settings crashes but shows error dialog:
+```
+✅ v2.0: Shows detailed error with version number
+   "Application Version: 2.0.0.0"
+   "Framework: .NET 8.0.x"
+   Lists troubleshooting steps
+
+❌ v1.x: Silent crash or generic Windows error
+   No detailed diagnostics
+   May show ".NET Framework initialization failed"
+```
+
+**Method 2: File Properties**
+
+```
+Right-click .scr file → Properties → Details tab
+
+v1.2.0.0:
+- File version: 1.2.0.0
+- Product version: 1.2.0.0
+- .NET Framework 4.0 dependency
+
+v2.0.0.0:
+- File version: 2.0.0.0
+- Product version: 2.0.0.0
+- .NET 8 dependency
+```
+
+**Method 3: DebugView (Advanced)**
+
+```
+1. Download DebugView from Sysinternals
+2. Run as Administrator
+3. Enable: Capture → Capture Global Win32
+4. Run screensaver with /c switch
+5. Check output:
+
+v2.0 startup log:
+======================================================================
+[STARTUP] Web Page Screensaver v2.0.0.0
+[STARTUP] Framework: .NET 8.0.x
+[STARTUP] Executable: C:\Windows\System32\Web-Page-Screensaver.scr
+======================================================================
+
+v1.x: No startup log (no diagnostic logging)
+```
+
+#### D. Migration Checklist v1.x → v2.0
+
+Before installing v2.0:
+
+- [ ] Backup registry settings (see MIGRATION.md)
+- [ ] Note down all configured URLs
+- [ ] Export registry: `HKEY_CURRENT_USER\Software\Web-Page-Screensaver`
+- [ ] Close screensaver if running
+- [ ] Remove ALL old .scr files from System32 (see Solution A above)
+- [ ] Install .NET 8 Desktop Runtime
+- [ ] Install WebView2 Runtime
+- [ ] Install v2.0 screensaver
+- [ ] Reconfigure URLs (v2.0 is backward compatible with v1.x settings)
+- [ ] Test with Settings button
+- [ ] Test with screensaver activation
+
+**Settings Migration:**
+
+```
+Good news! v2.0 reads v1.x registry settings automatically.
+After installing v2.0:
+1. Your URLs will be preserved
+2. Multi-monitor settings preserved
+3. Rotation intervals preserved
+4. All preferences carried over
+
+However, URLs will be validated for security:
+- Blocked schemes removed (javascript:, data:, etc.)
+- Dangerous file extensions blocked (.exe, .bat, etc.)
+- Check Debug output for rejected URLs
+```
+
 ---
 
 ## 🗑️ Uninstallation
